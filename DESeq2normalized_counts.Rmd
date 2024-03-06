@@ -1,0 +1,165 @@
+---
+title: "R Notebook for RNAseq normalization using DESeq2"
+Author: Fayuan Wen Ph.D
+output:
+  html_document:
+    df_print: paged
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+
+#Install Deseq2
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("DESeq2")
+```
+#Install tidyverse
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("tidyverse")
+```
+
+
+#Load the libraries. If there's no ggplot2 or tidyverse on our computer, install ggplot2 or tideyverse using Biomanager refering above comment
+```{r}
+library(DESeq2)
+library(ggplot2)
+library(tidyverse)
+library(magrittr)
+```
+
+#Set working directory(file path where you stored your RNA-seq files, you may save your RNA-seq files and this R notebook in the same foldera)
+```{r}
+setwd("/Users/fayuan.wen/Desktop/GSEA_book")
+getwd()
+list.files()
+```
+
+
+#Import the raw counts matrix data and metadata files
+
+```{r}
+counts <- read.csv("genes_counts.csv",header=TRUE,row.names=1)
+metadata <- read.csv("metadata.csv",header=TRUE,row.names=1)
+```
+
+#view the counts and metadata
+```{r}
+head(counts)
+View(metadata)
+```
+# sum the counts
+```{r}
+head(rowSums(counts))
+```
+
+#Creat a histogram from log-transfomed counts
+#Computes quantiles of the counts
+#filter the counts using rowsums (optional)
+
+```{r}
+rowSums(counts) %>% log() %>% hist(breaks=100)
+rowSums(counts) %>% quantile(probs=c(0.01,0.05,0.10,0.40))
+counts_filtered = filter(counts, rowSums(counts) >= 83)
+
+view(counts_filtered)
+```
+#create a DESeqDataSet object: countData argument expects the raw count matrix, you may also use the filtered counts; colData argument expects the metadat; design argument specifiies the experimental design, in this case, "SCD" indicated a simple design with a single variable SCD. You need to adjust this accordking to your variable.
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = counts,
+                              colData = metadata,
+                              design= ~ SCD)
+```
+
+#In order to get rid of the warning (Warning: some variables in design formula are characters, converting to factors) after running above command, make a copy of metadata and Convert "SCD" from Chararcter to factor, then save it.
+
+```{r}
+metadata_updated <- metadata
+class(metadata_updated$SCD)
+metadata_updated$SCD <- as.factor(metadata$SCD)
+class(metadata_updated$SCD)
+
+write.csv (metadata_updated, '20211207metadata_updated.csv')
+```
+
+#Created a DESeqDataSet object named dds from count data and updated metadata. This object should now contain your count data, metadata, and design formula for subsequent differential expression analysis using DESeq2
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = counts,
+                              colData = metadata_updated,
+                              design= ~ SCD)
+dds
+```
+#load the DeSeq2 object, running the DESeq2 analysis on your DESeqDataSet object dds, obtaining the results, and then ordering them by adjusted p-values (padj)
+```{r}
+dds <- DESeq(dds)
+res <- results(dds)
+dds
+res
+res_ordered <- res[order(res$padj),]
+head(res_ordered)
+```
+
+
+#Extracting normalized counts from your DESeqDataSet object dds. This is done using the counts() function with the normalized parameter set to TRUE
+
+```{r}
+normCounts <- counts(dds, normalized=TRUE)
+```
+
+#Converting the normalized counts matrix into a data frame, adding a column named "DESCRIPTION" to it, and then writing this data frame to a tab-delimited file named "normalized_counts.gct". 
+
+```{r}
+normCounts <- as.data.frame(normCounts)
+class(normCounts)
+normCounts$DESCRIPTION <- c("NA")
+write.table(normCounts, "normalized_counts.gct", sep = "\t", quote = F, row.names = T)
+head(normCounts)
+```
+#https://www.biostars.org/p/9475520/
+#Once you have created your DESeq object (dds) you are going to retrieve the normalized counts based on the DESeq method,Then, you must arrange this normalized counts matrix according to the minimum requirements for a GCT file. I suggest you to codificate the norm_counts as a data.frame and add an extra column called DESCRIPTION (this column could contain the id's of your genes, you may just use NA), save it using the write.table command.
+https://www.genepattern.org/file-formats-guide#GCT 
+
+
+
+# Reference:  https://github.com/genepattern/DESeq2/commit/31675375960e0bea704d922217a26c28afe1eabf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
