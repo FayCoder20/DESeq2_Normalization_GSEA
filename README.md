@@ -1,2 +1,2 @@
 # DESeq2_Normalization_GSEA
-Test RNA-seq raw counts file and meta data were included to run R notebook using DESeq2. Normalized count and phenotype lable file to run Gene Set Enrichment Analysis are included.
+Test data set including RNA-seq raw counts file and meta data was included to run R notebook using DESeq2. Normalized count generated from DESeq2 and phenotype lable file were included to run Gene Set Enrichment Analysis.
